@@ -19,7 +19,7 @@ class AttackEvaluator:
         self.images = None
         self.labels = None
 
-    def load_dataset(self, dataset_type):
+    def load_dataset(self, dataset_type, batch_size=100):
         if dataset_type == "cifar10":
             torch.manual_seed(8)
 
@@ -27,7 +27,6 @@ class AttackEvaluator:
             os.makedirs(os.path.join("results", "cifar10"), exist_ok=True)
 
             n_examples = 10000  # get all eval examples
-            batch_size = 100
             self.images, self.labels = load_cifar10(n_examples=n_examples, data_dir="data")
             self.test_dataset = torch.utils.data.TensorDataset(self.images, self.labels)
             self.test_loader = torch.utils.data.DataLoader(
@@ -94,19 +93,24 @@ class AttackEvaluator:
                 print(f"  {name:12s}: {acc:.4f}")
 
     def evaluate_robust_accuracy(
-        self, fmodel, dataloader, rel_stepsize=0.01 / 0.3, steps=1, eps=8 / 255
+        self, fmodel, dataloader, attack_fn, attack_kwargs={}, eps=8 / 255
     ):
         robust_success_list = []
         adv_examples_list = []
         l_inf_list = []
 
+        if callable(attack_fn):
+            attack = attack_fn(**attack_kwargs)
+        else:
+            raise ValueError("attack_fn must be callable")
         for images, labels in dataloader:
             images = images.to(self.device)
             labels = labels.to(self.device)
 
-            _, clipped, success = fb.attacks.LinfPGD(steps=steps)(
-                fmodel, images, labels, epsilons=[eps]
-            )
+            try:
+                _, clipped, success = attack(fmodel, images, labels, epsilons=[eps])
+            except TypeError:
+                _, clipped, success = attack(fmodel, images, labels)
             clipped = clipped[0]
 
             robust_success_list.append(success.float().reshape(-1).cpu())
