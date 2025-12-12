@@ -16,6 +16,8 @@ class AttackEvaluator:
         self.device = device
         if self.device is None:
             raise ValueError("Device cannot be None")
+        self.images = None
+        self.labels = None
 
     def load_dataset(self, dataset_type):
         if dataset_type == "cifar10":
@@ -26,8 +28,8 @@ class AttackEvaluator:
 
             n_examples = 10000  # get all eval examples
             batch_size = 100
-            images, labels = load_cifar10(n_examples=n_examples, data_dir="data")
-            self.test_dataset = torch.utils.data.TensorDataset(images, labels)
+            self.images, self.labels = load_cifar10(n_examples=n_examples, data_dir="data")
+            self.test_dataset = torch.utils.data.TensorDataset(self.images, self.labels)
             self.test_loader = torch.utils.data.DataLoader(
                 self.test_dataset, batch_size=batch_size, shuffle=False
             )
@@ -83,6 +85,13 @@ class AttackEvaluator:
         overall_accuracy = class_correct.sum().item() / class_total.sum().item()
 
         return overall_accuracy, class_accuracies
+
+    def eval_baseline(self, model, batch_size=100):
+        acc_orig, per_class_orig = self._per_class_accuracy(model.to(self.device), self.images, self.labels, batch_size=batch_size)
+        print(f"Overall Accuracy: {acc_orig:.4f}\n")
+        print("Per-class Accuracy:")
+        for i, (name, acc) in enumerate(zip(self.class_names, per_class_orig)):
+                print(f"  {name:12s}: {acc:.4f}")
 
     def evaluate_robust_accuracy(
         self, fmodel, dataloader, rel_stepsize=0.01 / 0.3, steps=1, eps=8 / 255
