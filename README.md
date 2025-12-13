@@ -1,6 +1,7 @@
 # 4710/5710 Final Project
 
-Authors: Christian Choi, Jerry Tan, Eric Wang
+Authors: Christian Choi, Jerry Tan, Eric Wang.
+
 This project investigates the effectiveness of norm-bounded and minimum norm adversarial attacks on ResNets.
 
 ## Usage
